@@ -1,20 +1,24 @@
 
-import React, { useState, useEffect } from 'react';
-import { Globe, LogIn, ShoppingCart } from 'lucide-react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { Globe, LogIn, ShoppingCart, Loader2 } from 'lucide-react';
 import { ClerkProvider, SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 import { CornerDeco, HexagonImage, GlitchText } from './components/HUD/HudComponents';
 import { BootSequence } from './components/HUD/BootSequence';
-import { DashboardView } from './components/Views/DashboardView';
-import { ProfileView } from './components/Views/ProfileView';
-import { AnalyticsView } from './components/Views/AnalyticsView';
-import { PricingView } from './components/Views/PricingView';
-import { SettingsView } from './components/Views/SettingsView';
-import { AchievementsView } from './components/Views/AchievementsView';
+import { ErrorBoundary } from './components/HUD/ErrorBoundary';
+import { ToastProvider, useToast } from './components/HUD/ToastSystem';
 
 import { analyzeEfficiency } from './services/geminiService';
 import { StorageService } from './services/storageService';
 import { Quest, QuestDifficulty, QuestStatus, PlayerStats, ViewSection } from './types';
+
+// Code Splitting / Lazy Loading Views for Performance
+const DashboardView = lazy(() => import('./components/Views/DashboardView').then(module => ({ default: module.DashboardView })));
+const ProfileView = lazy(() => import('./components/Views/ProfileView').then(module => ({ default: module.ProfileView })));
+const AnalyticsView = lazy(() => import('./components/Views/AnalyticsView').then(module => ({ default: module.AnalyticsView })));
+const PricingView = lazy(() => import('./components/Views/PricingView').then(module => ({ default: module.PricingView })));
+const SettingsView = lazy(() => import('./components/Views/SettingsView').then(module => ({ default: module.SettingsView })));
+const AchievementsView = lazy(() => import('./components/Views/AchievementsView').then(module => ({ default: module.AchievementsView })));
 
 // Mock Performance Data
 const PERFORMANCE_DATA = [
@@ -26,7 +30,6 @@ const PERFORMANCE_DATA = [
   { time: '14:00', energy: 65, focus: 85 },
 ];
 
-// Safe Environment Variable Retrieval
 const getEnvVar = (key: string): string => {
   try {
     if ((import.meta as any).env && (import.meta as any).env[key]) {
@@ -45,30 +48,27 @@ const getEnvVar = (key: string): string => {
 
 const CLERK_KEY = getEnvVar('VITE_CLERK_PUBLISHABLE_KEY');
 
-// User Interface
 interface CyberHudUser {
   firstName: string | null;
   imageUrl: string;
 }
 
-// Props for the main display component
 interface CyberHudProps {
   user: CyberHudUser;
   isAuthEnabled: boolean;
 }
 
-// Presentational Component
-const CyberHudApp: React.FC<CyberHudProps> = ({ user, isAuthEnabled }) => {
+// Inner App Component that uses the Toast Hook
+const CyberHudContent: React.FC<CyberHudProps> = ({ user, isAuthEnabled }) => {
   const [booted, setBooted] = useState(false);
-  // Initialize state from StorageService
+  const { addToast } = useToast();
+  
   const [stats, setStats] = useState<PlayerStats>(StorageService.getStats());
   const [quests, setQuests] = useState<Quest[]>(StorageService.getQuests());
   
   const [activeSection, setActiveSection] = useState<ViewSection>(ViewSection.DASHBOARD);
-  const [systemMessage, setSystemMessage] = useState("SISTEMA ONLINE. AGUARDANDO COMANDO.");
   const [equippedTitle, setEquippedTitle] = useState("NEOPHYTE");
 
-  // Persist State Changes
   useEffect(() => {
     StorageService.saveStats(stats);
   }, [stats]);
@@ -77,7 +77,12 @@ const CyberHudApp: React.FC<CyberHudProps> = ({ user, isAuthEnabled }) => {
     StorageService.saveQuests(quests);
   }, [quests]);
 
-  // Mana Drain Simulation (Time passing)
+  useEffect(() => {
+    if (booted) {
+      addToast("SYSTEM ONLINE. WELCOME BACK, OPERATOR.", "success");
+    }
+  }, [booted, addToast]);
+
   useEffect(() => {
     const timer = setInterval(() => {
       setStats(prev => ({
@@ -100,7 +105,7 @@ const CyberHudApp: React.FC<CyberHudProps> = ({ user, isAuthEnabled }) => {
       timestamp: Date.now()
     };
     setQuests(prev => [...prev, newQuest]);
-    setSystemMessage("NOVA DIRETRIZ RECEBIDA.");
+    addToast("NOVA DIRETRIZ RECEBIDA.", "info");
   };
 
   const handleCompleteQuest = async (id: string) => {
@@ -116,30 +121,34 @@ const CyberHudApp: React.FC<CyberHudProps> = ({ user, isAuthEnabled }) => {
       hp: Math.min(prev.maxHp, prev.hp + 5)
     }));
 
-    // Trigger AI analysis
+    addToast(`DIRETRIZ COMPLETADA. +${quest.rewardXP}XP`, "success");
+
+    // Trigger AI analysis asynchronously
     analyzeEfficiency(quests.filter(q => q.status === QuestStatus.COMPLETED).length + 1)
-      .then(msg => setSystemMessage(msg));
+      .then(msg => addToast(msg, "info"))
+      .catch(() => addToast("FALHA NA ANÁLISE AI", "warning"));
   };
 
   if (!booted) {
     return <BootSequence onComplete={() => setBooted(true)} />;
   }
 
+  const LoadingFallback = () => (
+    <div className="w-full h-96 flex flex-col items-center justify-center text-cyber-cyan gap-4">
+      <Loader2 size={48} className="animate-spin" />
+      <span className="font-mono text-sm tracking-widest animate-pulse">CARREGANDO MÓDULO...</span>
+    </div>
+  );
+
   const renderContent = () => {
-    switch (activeSection) {
-      case ViewSection.PROFILE:
-        return <ProfileView stats={stats} />;
-      case ViewSection.ANALYTICS:
-        return <AnalyticsView />;
-      case ViewSection.ACHIEVEMENTS:
-        return <AchievementsView stats={stats} currentTitle={equippedTitle} onSetTitle={setEquippedTitle} />;
-      case ViewSection.SHOP:
-        return <PricingView />;
-      case ViewSection.SETTINGS:
-        return <SettingsView />;
-      case ViewSection.DASHBOARD:
-      default:
-        return (
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        {activeSection === ViewSection.PROFILE && <ProfileView stats={stats} />}
+        {activeSection === ViewSection.ANALYTICS && <AnalyticsView />}
+        {activeSection === ViewSection.ACHIEVEMENTS && <AchievementsView stats={stats} currentTitle={equippedTitle} onSetTitle={setEquippedTitle} />}
+        {activeSection === ViewSection.SHOP && <PricingView />}
+        {activeSection === ViewSection.SETTINGS && <SettingsView />}
+        {activeSection === ViewSection.DASHBOARD && (
           <DashboardView 
             stats={stats}
             quests={quests}
@@ -149,8 +158,9 @@ const CyberHudApp: React.FC<CyberHudProps> = ({ user, isAuthEnabled }) => {
             onNavigate={setActiveSection}
             performanceData={PERFORMANCE_DATA}
           />
-        );
-    }
+        )}
+      </Suspense>
+    );
   };
 
   return (
@@ -214,16 +224,15 @@ const CyberHudApp: React.FC<CyberHudProps> = ({ user, isAuthEnabled }) => {
                 <div className="px-3 py-1 border border-gray-700 text-gray-500 font-mono text-xs">MODO_LOCAL</div>
               )}
             </div>
-            <div className="text-cyber-pink font-mono text-xs uppercase animate-pulse">
-              {systemMessage}
-            </div>
           </div>
         </header>
 
         {/* View Content */}
-        <main className="min-h-[500px]">
-          {renderContent()}
-        </main>
+        <ErrorBoundary>
+          <main className="min-h-[500px]">
+            {renderContent()}
+          </main>
+        </ErrorBoundary>
       </div>
       
       {/* Scanline Overlay */}
@@ -243,7 +252,7 @@ const ClerkWrapper = () => {
     imageUrl: user?.imageUrl || "https://picsum.photos/200/200"
   };
 
-  return <CyberHudApp user={userData} isAuthEnabled={true} />;
+  return <CyberHudContent user={userData} isAuthEnabled={true} />;
 }
 
 // Wrapper for Local mode
@@ -252,17 +261,22 @@ const LocalWrapper = () => {
     firstName: "Operador_Local",
     imageUrl: "https://picsum.photos/200/200"
   };
-  return <CyberHudApp user={mockUser} isAuthEnabled={false} />;
+  return <CyberHudContent user={mockUser} isAuthEnabled={false} />;
 }
 
 // Root Component
 export default function App() {
-  if (CLERK_KEY) {
-    return (
-      <ClerkProvider publishableKey={CLERK_KEY}>
-        <ClerkWrapper />
-      </ClerkProvider>
-    );
-  }
-  return <LocalWrapper />;
+  const AppContent = CLERK_KEY ? (
+    <ClerkProvider publishableKey={CLERK_KEY}>
+      <ClerkWrapper />
+    </ClerkProvider>
+  ) : (
+    <LocalWrapper />
+  );
+
+  return (
+    <ToastProvider>
+      {AppContent}
+    </ToastProvider>
+  );
 }

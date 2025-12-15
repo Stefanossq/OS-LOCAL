@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Activity, Battery, Zap, Coins, Clock } from 'lucide-react';
 import { ResponsiveContainer, AreaChart, Area, Tooltip, XAxis, YAxis } from 'recharts';
 import { StatBar, CornerDeco } from '../HUD/HudComponents';
@@ -26,6 +26,32 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
   performanceData
 }) => {
+  // Memoize chart data/components to prevent unnecessary re-renders during high-frequency updates (e.g. mana drain)
+  const chart = useMemo(() => (
+    <ResponsiveContainer width="100%" height="100%">
+      <AreaChart data={performanceData}>
+        <defs>
+          <linearGradient id="colorFocus" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
+            <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
+          </linearGradient>
+          <linearGradient id="colorEnergy" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#d946ef" stopOpacity={0.3}/>
+            <stop offset="95%" stopColor="#d946ef" stopOpacity={0}/>
+          </linearGradient>
+        </defs>
+        <XAxis dataKey="time" stroke="#4b5563" tick={{fill: '#4b5563', fontSize: 10, fontFamily: 'monospace'}} />
+        <YAxis stroke="#4b5563" tick={{fill: '#4b5563', fontSize: 10, fontFamily: 'monospace'}} />
+        <Tooltip 
+          contentStyle={{ backgroundColor: '#111827', borderColor: '#06b6d4', color: '#fff' }}
+          itemStyle={{ fontFamily: 'monospace' }}
+        />
+        <Area type="monotone" dataKey="focus" stroke="#06b6d4" fillOpacity={1} fill="url(#colorFocus)" />
+        <Area type="monotone" dataKey="energy" stroke="#d946ef" fillOpacity={1} fill="url(#colorEnergy)" />
+      </AreaChart>
+    </ResponsiveContainer>
+  ), [performanceData]);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-500">
       {/* Left Column: Stats (3 cols) */}
@@ -90,28 +116,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="w-2 h-2 bg-cyber-pink rounded-full animate-pulse delay-75"></div>
           </div>
           <h3 className="text-xs font-mono text-gray-400 mb-2">MATRIZ_DE_PERFORMANCE</h3>
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={performanceData}>
-              <defs>
-                <linearGradient id="colorFocus" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#06b6d4" stopOpacity={0}/>
-                </linearGradient>
-                <linearGradient id="colorEnergy" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#d946ef" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#d946ef" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="time" stroke="#4b5563" tick={{fill: '#4b5563', fontSize: 10, fontFamily: 'monospace'}} />
-              <YAxis stroke="#4b5563" tick={{fill: '#4b5563', fontSize: 10, fontFamily: 'monospace'}} />
-              <Tooltip 
-                contentStyle={{ backgroundColor: '#111827', borderColor: '#06b6d4', color: '#fff' }}
-                itemStyle={{ fontFamily: 'monospace' }}
-              />
-              <Area type="monotone" dataKey="focus" stroke="#06b6d4" fillOpacity={1} fill="url(#colorFocus)" />
-              <Area type="monotone" dataKey="energy" stroke="#d946ef" fillOpacity={1} fill="url(#colorEnergy)" />
-            </AreaChart>
-          </ResponsiveContainer>
+          {chart}
         </div>
       </div>
 

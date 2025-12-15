@@ -42,5 +42,6 @@ export enum ViewSection {
   PROFILE = 'profile',
   ANALYTICS = 'analytics',
   SETTINGS = 'settings',
-  SHOP = 'shop'
+  SHOP = 'shop',
+  ACHIEVEMENTS = 'achievements'
 }

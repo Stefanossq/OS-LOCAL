@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, User, Settings, BarChart2, ShoppingCart } from 'lucide-react';
+import { Home, User, Settings, BarChart2, ShoppingCart, Trophy } from 'lucide-react';
 import { ViewSection } from '../types';
 
 interface MiniMapProps {
@@ -9,12 +9,15 @@ interface MiniMapProps {
 }
 
 export const MiniMap: React.FC<MiniMapProps> = ({ activeSection, onNavigate }) => {
+  // Organized in a Hexagon pattern around center
   const nodes = [
-    { id: ViewSection.DASHBOARD, icon: <Home size={14} />, x: 50, y: 50 },
-    { id: ViewSection.PROFILE, icon: <User size={14} />, x: 20, y: 80 },
-    { id: ViewSection.ANALYTICS, icon: <BarChart2 size={14} />, x: 80, y: 20 },
-    { id: ViewSection.SHOP, icon: <ShoppingCart size={14} />, x: 20, y: 20 },
-    { id: ViewSection.SETTINGS, icon: <Settings size={14} />, x: 80, y: 80 },
+    { id: ViewSection.DASHBOARD, icon: <Home size={14} />, x: 50, y: 50 }, // Center
+    { id: ViewSection.SHOP, icon: <ShoppingCart size={14} />, x: 50, y: 20 }, // Top
+    { id: ViewSection.ANALYTICS, icon: <BarChart2 size={14} />, x: 80, y: 35 }, // Top Right
+    { id: ViewSection.SETTINGS, icon: <Settings size={14} />, x: 80, y: 65 }, // Bottom Right
+    { id: ViewSection.ACHIEVEMENTS, icon: <Trophy size={14} />, x: 50, y: 80 }, // Bottom
+    { id: ViewSection.PROFILE, icon: <User size={14} />, x: 20, y: 65 }, // Bottom Left
+    // Empty spot at 20, 35 for symmetry or future use
   ];
 
   return (
@@ -46,7 +49,7 @@ export const MiniMap: React.FC<MiniMapProps> = ({ activeSection, onNavigate }) =
               ${isActive ? 'border-cyber-yellow bg-cyber-yellow/20 text-cyber-yellow scale-110 shadow-[0_0_15px_rgba(250,204,21,0.5)]' : 'border-cyber-cyan bg-black/50 text-cyber-cyan hover:bg-cyber-cyan/20'}
             `}
             style={{ left: `${node.x}%`, top: `${node.y}%`, transform: 'translate(-50%, -50%)' }}
-            title={node.id}
+            title={node.id.toUpperCase()}
           >
             {node.icon}
           </button>

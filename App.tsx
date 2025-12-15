@@ -10,6 +10,7 @@ import { ProfileView } from './components/Views/ProfileView';
 import { AnalyticsView } from './components/Views/AnalyticsView';
 import { PricingView } from './components/Views/PricingView';
 import { SettingsView } from './components/Views/SettingsView';
+import { AchievementsView } from './components/Views/AchievementsView';
 
 import { analyzeEfficiency } from './services/geminiService';
 import { StorageService } from './services/storageService';
@@ -65,6 +66,7 @@ const CyberHudApp: React.FC<CyberHudProps> = ({ user, isAuthEnabled }) => {
   
   const [activeSection, setActiveSection] = useState<ViewSection>(ViewSection.DASHBOARD);
   const [systemMessage, setSystemMessage] = useState("SISTEMA ONLINE. AGUARDANDO COMANDO.");
+  const [equippedTitle, setEquippedTitle] = useState("NEOPHYTE");
 
   // Persist State Changes
   useEffect(() => {
@@ -129,6 +131,8 @@ const CyberHudApp: React.FC<CyberHudProps> = ({ user, isAuthEnabled }) => {
         return <ProfileView stats={stats} />;
       case ViewSection.ANALYTICS:
         return <AnalyticsView />;
+      case ViewSection.ACHIEVEMENTS:
+        return <AchievementsView stats={stats} currentTitle={equippedTitle} onSetTitle={setEquippedTitle} />;
       case ViewSection.SHOP:
         return <PricingView />;
       case ViewSection.SETTINGS:
@@ -165,10 +169,15 @@ const CyberHudApp: React.FC<CyberHudProps> = ({ user, isAuthEnabled }) => {
                 </h1>
                 <span className="text-cyber-yellow font-mono text-sm border border-cyber-yellow px-1 rounded">NÍVEL {stats.level}</span>
               </div>
-              <p className="text-cyber-cyan/60 font-mono text-sm mt-1 flex items-center gap-2">
-                <Globe size={12} className="animate-pulse" />
-                ONLINE // <span className="text-cyber-green">CONEXÃO SEGURA</span>
-              </p>
+              <div className="flex flex-col gap-1 mt-1">
+                <p className="text-cyber-pink font-mono text-xs tracking-wider">
+                  PATENTE: {equippedTitle}
+                </p>
+                <p className="text-cyber-cyan/60 font-mono text-xs flex items-center gap-2">
+                  <Globe size={12} className="animate-pulse" />
+                  ONLINE // <span className="text-cyber-green">CONEXÃO SEGURA</span>
+                </p>
+              </div>
             </div>
           </div>
 

@@ -1,0 +1,5 @@
+{
+  "name": "CyberHUD Dashboard",
+  "description": "A gamified productivity dashboard featuring a sci-fi HUD interface, Gemini-powered quest generation, and real-time status tracking.",
+  "requestFramePermissions": []
+}
